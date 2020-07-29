@@ -2,19 +2,21 @@ import React from 'react';
 import './style.scss';
 import { useTable, usePagination } from 'react-table'
 
-import makeData from './../../makeData';
+import makeData from '../../makeData';
 
-function Table({ columns, data }) {
-  // Sử dụng state và functions được trả về từ useTable để xây giao diện
+function Table({
+  columns,
+  data,
+  fetchData,
+  loading,
+  pageCount: controlledPageCount,
+}) {
   const {
     getTableProps,
     getTableBodyProps,
     headerGroups,
     prepareRow,
-    page, // Thay vì sử dụng "rows" chúng ta sử dụng use pageInstead of using 'rows', we'll use page,
-    //mỗi cái chỉ có các rows cho trang hoạt động
-
-    // Những phần còn lại thì cũng siêu tiện dụng
+    page,
     canPreviousPage,
     canNextPage,
     pageOptions,
@@ -23,17 +25,28 @@ function Table({ columns, data }) {
     nextPage,
     previousPage,
     setPageSize,
+    // Get the state from the instance
     state: { pageIndex, pageSize },
   } = useTable(
     {
       columns,
       data,
-      initialState: { pageIndex: 2 },
+      initialState: { pageIndex: 0 }, // Pass our hoisted table state
+      manualPagination: true, // Tell the usePagination
+      // hook that we'll handle our own data fetching
+      // This means we'll also have to provide our own
+      // pageCount.
+      pageCount: controlledPageCount,
     },
     usePagination
   )
 
-  // Render giao diện cho table
+  // Listen for changes in pagination and use the state to fetch our new data
+  React.useEffect(() => {
+    fetchData({ pageIndex, pageSize })
+  }, [fetchData, pageIndex, pageSize])
+
+  // Render the UI for your table
   return (
     <>
       <pre>
@@ -56,7 +69,16 @@ function Table({ columns, data }) {
           {headerGroups.map(headerGroup => (
             <tr {...headerGroup.getHeaderGroupProps()}>
               {headerGroup.headers.map(column => (
-                <th {...column.getHeaderProps()}>{column.render('Header')}</th>
+                <th {...column.getHeaderProps()}>
+                  {column.render('Header')}
+                  <span>
+                    {column.isSorted
+                      ? column.isSortedDesc
+                        ? ' 🔽'
+                        : ' 🔼'
+                      : ''}
+                  </span>
+                </th>
               ))}
             </tr>
           ))}
@@ -72,11 +94,22 @@ function Table({ columns, data }) {
               </tr>
             )
           })}
+          <tr>
+            {loading ? (
+              // Use our custom loading state to show a loading indicator
+              <td colSpan="10000">Loading...</td>
+            ) : (
+              <td colSpan="10000" className="custom-show">
+                Showing {page.length} of ~{controlledPageCount * pageSize}{' '}
+                results
+              </td>
+            )}
+          </tr>
         </tbody>
       </table>
       {/* 
-        Pagination có thể xây dựng theo cách bạn muốn
-        Đây chỉ là một ví dụ hiển thị UI cơ bản
+        Pagination can be built however you'd like. 
+        This is just a very basic UI implementation:
       */}
       <div className="pagination">
         <button onClick={() => gotoPage(0)} disabled={!canPreviousPage}>
@@ -124,9 +157,12 @@ function Table({ columns, data }) {
       </div>
     </>
   )
-}
+};
 
-function Example05() {
+// Let's simulate a large dataset on the server (outside of our component)
+const serverData = makeData(100);
+
+function Example06() {
   const columns = React.useMemo(
     () => [
       {
@@ -167,11 +203,49 @@ function Example05() {
     []
   )
 
-  const data = React.useMemo(() => makeData(1000), [])
+  // We'll start our table without any data
+  const [data, setData] = React.useState([])
+  const [loading, setLoading] = React.useState(false)
+  const [pageCount, setPageCount] = React.useState(0)
+  const fetchIdRef = React.useRef(0)
+
+  const fetchData = React.useCallback(({ pageSize, pageIndex }) => {
+    // This will get called when the table needs new data
+    // You could fetch your data from literally anywhere,
+    // even a server. But for this example, we'll just fake it.
+
+    // Give this fetch an ID
+    const fetchId = ++fetchIdRef.current
+
+    // Set the loading state
+    setLoading(true)
+
+    // We'll even set a delay to simulate a server here
+    setTimeout(() => {
+      // Only update the data if this is the latest fetch
+      if (fetchId === fetchIdRef.current) {
+        const startRow = pageSize * pageIndex
+        const endRow = startRow + pageSize
+        setData(serverData.slice(startRow, endRow))
+
+        // Your server could send back total page count.
+        // For now we'll just fake it, too
+        setPageCount(Math.ceil(serverData.length / pageSize))
+
+        setLoading(false)
+      }
+    }, 1000)
+  }, [])
 
   return (
-    <Table columns={columns} data={data} />
+    <Table
+      columns={columns}
+      data={data}
+      fetchData={fetchData}
+      loading={loading}
+      pageCount={pageCount}
+    />
   )
 }
 
-export default Example05
+export default Example06

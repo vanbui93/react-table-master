@@ -5,7 +5,10 @@ import { Tab } from 'react-bootstrap';
 import Example01 from './examples/Example01';
 import Example02 from './examples/Example02';
 import Example03 from './examples/Example03';
-import Example04 from './examples/Example04/index';
+import Example04 from './examples/Example04';
+import Example05 from './examples/Example05';
+import Example06 from './examples/Example06';
+import Example07 from './examples/Example07';
 
 
 export default class App extends Component {
@@ -33,6 +36,15 @@ export default class App extends Component {
                 </Tab.Pane>
                 <Tab.Pane eventKey="tab04">
                   <Example04 />
+                </Tab.Pane>
+                <Tab.Pane eventKey="tab05">
+                  <Example05 />
+                </Tab.Pane>
+                <Tab.Pane eventKey="tab06">
+                  <Example06 />
+                </Tab.Pane>
+                <Tab.Pane eventKey="tab07">
+                  <Example07 />
                 </Tab.Pane>
               </Tab.Content>
             </div>
